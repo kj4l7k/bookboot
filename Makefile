@@ -7,8 +7,11 @@ AS=$(CROSS)as
 
 all: os.img
 
-os.img: bookglue.pl bookboot.bin  zImage
+os.img: bookglue.pl cfg.pl bookboot.bin  zImage  initrd.gz
 	./bookglue.pl 
+
+initrd.gz:
+	touch initrd.gz
 
 bookboot.elf: bookboot.S  serial.S
 	$(CC) -fomit-frame-pointer -O2  -nostdlib -Wl,-Ttext,0xc8000000 -N bookboot.S  -o bookboot.elf
@@ -27,7 +30,7 @@ install: os.img
 	sync
 
 package: bookboot.bin
-	tar cf - *.S bookboot.bin  *.pl README  COPYING Makefile  | gzip > bookboot.tgz
+	tar cf - *.S bookboot.bin  *.pl README Changelog COPYING Makefile  | gzip > bookboot.tgz
 
 release:
 	make mrproper

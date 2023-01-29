@@ -1,12 +1,14 @@
 - Intro:
 
 This is Bookboot, a facility for putting together an OS.IMG file 
- for the Psion Netbook and similar machines.
- In particular, it works for me on my malaybook (Malaysian variety
- of the netbook).
+ for the Psion Netbook and similar machines. It was developed on a 
+ malaybook (Malaysian variety of the netbook), and has been reported to 
+ work on standard netbooks and 7books (Series 7 with netbook personality
+ module).
  The file format was put together by guesswork and trial and error.
 
 - creating OS.IMG:
+  - (optional) adjust parameters in cfg.pl
   - move linux kernel file to 'zImage'
   - (optional) move compressed initrd file to 'initrd.gz'
   - make
@@ -79,9 +81,12 @@ This is Bookboot, a facility for putting together an OS.IMG file
      bookboot will not need a multi-megabyte [cross-]compiler for what amounts
      to less than 150 lines of arm assembly.
    - For the same reason, the assembly code is designed to be as 'dumb'
-     as possible. All parameters are set by a perl script. Thus, anyone with
+     as possible. The only exception is memory autodetection, since this
+     can only be done at runtime.
+     All parameters are set by a perl script. Thus, anyone with
      a working perl implementation (and some knowledge of 'make') should be
      able to create an os.img file using this package. 
+     
    - For those looking for more options and/or possibilities: check out
      the source, it should be reasonably self-explanatory.
 

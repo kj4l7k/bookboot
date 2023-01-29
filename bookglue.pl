@@ -10,16 +10,25 @@ use strict;
 # 	Copyright 2002 Tony Lindgren 
 #
 
-my $version = "Bookboot v 0.20\n";  # max 31 characters!
-my $verbose = 0;  # 0 for silent operation, 1 for some more explanation
+my $version = "Bookboot v 0.25\n";  # max 31 characters!
+
+my $cfgfile = "cfg.pl";
 
 # these should match with bookboot.S
-my $cpy_pars = 256;
+my $cfg_pos = 256;
+my $cfg_pars = 260;
+my $cpy_pars = 264;
 my $reg_pars = 436;
 my $welcome = 480;
 
-
-my $memsize = 32; # memory size in MB; possible values: 32, 48 and 64
+# default values, can be changed in cfgfile
+my $memdetect = "auto"; 
+my $memsize = 32; 
+my $cmdline = 'video=sa1100  root=/dev/ram0  rw';
+my $verbose = 0; 
+my $kernel = "zImage";
+my $initrd = "initrd.gz";
+my $image = "os.img";
 
 # size of header/wrapper used by the Netbook boot loader 
 my $wrappersize = 0x0100;
@@ -30,12 +39,10 @@ my $taglistpos = 0x02000;
 my $taglistdest = 0xc01e8000;
 my $initrdspacer=0x10000;
 		
-my $kernel = "zImage";
-my $initrd = "initrd.gz";
-my $image = "os.img";
 my $bootcode = "bookboot.bin";
-my $cmdline = "console=ttySA0 video=sa1100 root=/dev/ram0  rw";
 
+eval `cat $cfgfile` or die "couldn't run configuration file $cfgfile ";
+my $cfg = ( 1 & ($memdetect eq "auto"));
 my $kernelsize = -s $kernel;
 my $initrdsize = -s $initrd;
 my $cmdlinesize = length($cmdline) +1;
@@ -78,7 +85,11 @@ $var =  pack('L',$loadadr+$taglistpos); # taglist start
 $var .= pack('L',$loadadr+$taglistpos+ 0x2000); # taglist end
 $var .= pack('L',$taglistdest);	#   taglist destination
 inject_to_file($image, $var, $wrappersize+$cpy_pars);
-
+inject_to_file($image, pack('L',$cfg), $wrappersize+$cfg_pos);
+if ($memdetect eq "auto") {
+	inject_to_file($image, pack('L',$loadadr+$taglistpos), 
+		$wrappersize+$cfg_pars);
+}	
 
 $var = pack('L',0x0);   	# r0 = 0
 $var .= pack('L',0x40);		# r1 = arch_psion_series7
@@ -120,10 +131,12 @@ sub build_taglist(){
 	$taglist  = pack('L', 0x02);        # tag size
 	$taglist .= pack('L', 0x54410001);  # ATAG_CORE
 
-	$taglist .= atag_mem(0xc0000000);
-	$taglist .= atag_mem(0xc8000000);
-	if ($memsize > 32){ $taglist .= atag_mem(0xd0000000) };
-	if ($memsize > 48){ $taglist .= atag_mem(0xd8000000) };
+	if ($memdetect eq "set"){
+		$taglist .= atag_mem(0xc0000000);
+		$taglist .= atag_mem(0xc8000000);
+		if ($memsize > 32){ $taglist .= atag_mem(0xd0000000) };
+		if ($memsize > 48){ $taglist .= atag_mem(0xd8000000) };
+	}
 
 	$taglist .= pack('L', $cmdlinesize /4 +2);  # tag size
 	$taglist .= pack('L',0x54410009);  	  # ATAG_CMDLINE
