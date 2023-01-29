@@ -1,0 +1,88 @@
+- Intro:
+
+This is Bookboot, a facility for putting together an OS.IMG file 
+ for the Psion Netbook and similar machines.
+ In particular, it works for me on my malaybook (Malaysian variety
+ of the netbook).
+ The file format was put together by guesswork and trial and error.
+
+- creating OS.IMG:
+  - move linux kernel file to 'zImage'
+  - (optional) move compressed initrd file to 'initrd.gz'
+  - make
+  
+- Usage:
+ - backup any relevant data from the netbook to a safe place (NB:
+ 	all memory contents and settings will be lost upon the hard
+	reset below).
+ - backup your original OS.IMG file	
+ - copy OS.IMG to dos-formatted first partition of CF card.
+ - (for debugging output: attach to serial port at 115kbit 8N1)
+ - insert CF card in Netbook
+ - do a full reboot (take out all batteries and power supplies, wait
+ 	a few seconds, reinsert power)
+ - watch the debugging output on the serial port,
+ 	or see the kernel boot (at the time of writing, the lcd is barely
+	functional; the red led should flash to indicate that the kernel is
+	running).
+ - enjoy!
+
+- Internals:
+  The relevant part of the OS.IMG (from the perspective of the builtin 
+  Malaybook bootloader) appears to be 
+   
+   wrapper (typically 256 bytes):
+   - 24 bytes of label
+   - 1 word length of file (or somewhat larger than that)
+   - 1 word length of wrapper (only tested with 0x100, i.e. 256 bytes)
+   - filler for rest of wrapper
+   
+   header (typically 256 bytes):
+   - first word: not used?
+   - second word: entry point (typically jump to start of bootcode)
+   - at offset 0x90: file size	
+
+   The rest is up to you, typically:
+   - filler to end of header 
+   - bootcode
+   - your choice of code..
+   rest:
+   - up to you...
+
+   the only 'magic' involved seems to be that _if_ the os.img file is
+   larger than 16kB+256 bytes, the bootloader code checks for 16 magic
+   bytes at locations 0x41d4-0x41e3 in the file.
+   
+   The Malaybook bootloader will discard the wrapper, load the rest of the
+   file at memory location 0xc8000000, and then jump to location
+   0xc8000004 (i.e., the second word of the header).
+
+   The file layout used by bookboot is
+   - 0x0   256 byte wrapper
+   - 0x100 256 byte header, starts with two jump instructions to bootcode below
+   - 0x200 256 bytes of parameters for bootcode
+   - 0x300 bit of bootcode 
+   - 0x2100: list of tagged entries containing boot parameters for linux kernel
+   - 0x41d4-0x41e3: 16 magic bytes
+   - 0x8100: linux zImage
+   - a bit of spacer (apparently necessary to avoid overwriting the initrd
+   	during kernel decompression)
+   - (optional) initrd.gz, compressed initial ramdisk
+
+   The bootcode echos some info to the serial port, then transfers 
+   the taglist to 0xc01e8000 (where the netbook kernel expects it), 
+   and finally jumps to the kernel decompression code at 0xc8008000
+
+- Code/package commentary:
+   - the package provides the bootcode in both source and binary form.
+     The rationale of including the binary is that people who want to use
+     bookboot will not need a multi-megabyte [cross-]compiler for what amounts
+     to less than 150 lines of arm assembly.
+   - For the same reason, the assembly code is designed to be as 'dumb'
+     as possible. All parameters are set by a perl script. Thus, anyone with
+     a working perl implementation (and some knowledge of 'make') should be
+     able to create an os.img file using this package. 
+   - For those looking for more options and/or possibilities: check out
+     the source, it should be reasonably self-explanatory.
+
+Klaasjan van Druten, July 2004   
